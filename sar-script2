@@ -1,0 +1,137 @@
+#!/bin/bash
+#set -x
+#set -x
+echo "  ------------------------------------ "
+echo "  |           SAR SCRIPTS            | "
+echo "  ------------------------------------ "
+echo ""
+echo ""
+echo " To Start SAR Script Select Below Options"
+echo " 1] To Start The Normal SAR Script "
+echo " 2] To Filter The SAR (> 85%) "
+echo " 3] Display Storage Utilization "
+echo ""
+echo ""
+echo -n " ENTER YOUR CHOICE ===> "
+
+cmd_chk()
+{
+if [ $? -eq 0 ]
+then
+    echo " Last executed command is okay "
+else
+    echo " Last command FAILED";
+fi
+}
+
+#This Function Will Display The SAR Report
+normal_SAR()
+{
+echo  -e "\e[39m"" ___________________________________________________________________________________________________________________________________________ "
+echo -e  "\e[39m""|""          Memory Average          ""|""           Memory PEAK            ""|""           CPU Average            ""|""            CPU PEAK              ""|"
+for line in $(cat $line); do
+echo " ---------------------------------  ----------------------------------  ----------------------------------  ---------------------------------- "
+#Sending Memory Average To IP1 File
+echo `ssh admin@"$line" sar -r -s 09:00:00 -e 19:00:00 |awk '$1 == "Average:"{print $4}'` > /tmp/IP1
+#Displaying Hostname
+echo -e "\e[39m""|     ""\e[94m"`ssh admin@"$line" hostname ` "\e[39m"":"|tr -d '\n'
+#Displaying Memory Average
+echo -e "\e[92m" `cat /tmp/IP1` |tr -d '\n'
+#Sending  Memory Peak To RAM File
+echo `ssh admin@"$line" sar -r -s 09:00:00 -e 19:00:00 |awk '{print $5}'|awk 'NR == 1 {next} {print}'|awk 'NR == 2 {next} {print}'|awk 'NR == 3 {next} {print}'|awk 'NR>2 {print last} {last=$0}'` >> /tmp/RAM
+#Displaying Hostname
+echo  -e "\e[39m""     |     ""\e[94m"`ssh admin@"$line" hostname ` "\e[39m"":"|tr -d '\n'
+#Displaying Memory Peak
+echo  -e "\e[92m" `awk -v RS='[[:space:]]+' 'BEGIN{max=-inf};{max = $0>max? $0: max};END{print max}' /tmp/RAM`'\n'  | tr -d '\n'
+#Sending CPU Average To IP2 File
+echo `ssh admin@"$line" sar -u -s 09:00:00 -e 19:00:00 |awk '$1 == "Average:"{T=100-$8; if (T > 0) print T}'` > /tmp/IP2
+#Displaying Hostname
+echo  -e "\e[39m""     |     ""\e[94m" `ssh admin@"$line" hostname ` "\e[39m"":"|tr -d '\n'
+#Displaying CPU Average
+echo -e "\e[92m" `cat /tmp/IP2`|tr -d '\n'
+#Sending CPU Peak To CPU File
+echo `ssh admin@"$line" sar -u -s 09:00:00 -e 19:00:00 |awk '{print $4}'|awk 'NR == 1 {next} {print}'|awk 'NR == 2 {next} {print}'|awk 'NR == 3 {next} {print}'` > /tmp/CPU
+#Displaying Hostname
+echo -e "\e[39m""     |     ""\e[94m"`ssh admin@"$line" hostname ` "\e[39m"":"|tr -d '\n'
+#Displaying CPU Peak
+echo -e "\e[92m" `awk -v RS='[[:space:]]+' 'BEGIN{max=-inf};{max = $0>max? $0: max};END{print max}' /tmp/CPU`"\e[39m""\t|"| tr -d '\n'
+echo -e "\e[39m" "  "
+done < host
+echo " ---------------------------------  ----------------------------------  ----------------------------------  ---------------------------------- "
+exit 0
+
+}
+
+#This Function Will Filter Servers Whose Peak Exceed 85%
+filter_SAR()
+{
+echo  -e "\e[39m"" ___________________________________________________________________________________________________________________________________________ "
+echo -e  "\e[39m""|""          Memory Average          ""|""           Memory PEAK            ""|""           CPU Average            ""|""            CPU PEAK              ""|"
+for line in $(cat $line); do
+#echo " ---------------------------------  ----------------------------------  ----------------------------------  ---------------------------------- "
+
+ssh admin@"$line" sar -r -s 09:00:00 -e 19:00:00 |awk '{print $5}'|awk 'NR == 1 {next} {print}'|awk 'NR == 2 {next} {print}'|awk 'NR == 3 {next} {print}'|awk 'NR>2 {print last} {last=$0}' > /tmp/RAM
+data=$(awk -v RS='[[:space:]]+' 'BEGIN{max=-inf};{max = $0>max? $0: max};END{print max}' /tmp/RAM)
+int=$( printf "%.0f" $data )
+if [ "$int" -ge 85 ]
+then
+    echo " ---------------------------------  ----------------------------------  ----------------------------------  ---------------------------------- "
+    #Sending Memory Average To IP1 File
+    echo `ssh admin@"$line" sar -r -s 09:00:00 -e 19:00:00 |awk '$1 == "Average:"{print $4}'` > /tmp/IP1
+    #Displaying Hostname
+    echo -e "\e[39m""|     ""\e[94m"`ssh admin@"$line" hostname ` "\e[39m"":"|tr -d '\n'
+    #Displaying Memory Average
+    echo -e "\e[92m" `cat /tmp/IP1` |tr -d '\n'
+    #Sending  Memory Peak To RAM File
+    echo `ssh admin@"$line" sar -r -s 09:00:00 -e 19:00:00 |awk '{print $5}'|awk 'NR == 1 {next} {print}'|awk 'NR == 2 {next} {print}'|awk 'NR == 3 {next} {print}'|awk 'NR>2 {print last} {last=$0}'` > /tmp/RAM
+    #Displaying Hostname
+    echo  -e "\e[39m""     |     ""\e[94m"`ssh admin@"$line" hostname ` "\e[39m"":"|tr -d '\n'
+    #Displaying Memory Peak
+    echo  -e "\e[92m" `awk -v RS='[[:space:]]+' 'BEGIN{max=-inf};{max = $0>max? $0: max};END{print max}' /tmp/RAM`'\n'  | tr -d '\n'
+    #Sending CPU Average To IP2 File
+    echo `ssh admin@"$line" sar -u -s 09:00:00 -e 19:00:00 |awk '$1 == "Average:"{T=100-$8; if (T > 0) print T}'` > /tmp/IP2
+    #Displaying Hostname
+    echo  -e "\e[39m""     |     ""\e[94m" `ssh admin@"$line" hostname ` "\e[39m"":"|tr -d '\n'
+    #Displaying CPU Average
+    echo -e "\e[92m" `cat /tmp/IP2`|tr -d '\n'
+    #Sending CPU Peak To CPU File
+    echo `ssh admin@"$line" sar -u -s 09:00:00 -e 19:00:00 |awk '{print $4}'|awk 'NR == 1 {next} {print}'|awk 'NR == 2 {next} {print}'|awk 'NR == 3 {next} {print}'` > /tmp/CPU
+    #Displaying Hostname
+    echo -e "\e[39m""     |     ""\e[94m"`ssh admin@"$line" hostname ` "\e[39m"":"|tr -d '\n'
+    #Displaying CPU Peak
+    echo -e "\e[92m" `awk -v RS='[[:space:]]+' 'BEGIN{max=-inf};{max = $0>max? $0: max};END{print max}' /tmp/CPU` "\e[39m""    |"| tr -d '\n'
+    echo -e "\e[39m" "  "
+
+else
+    command
+fi
+
+done < host
+echo " ---------------------------------  ----------------------------------  ----------------------------------  ---------------------------------- "
+exit 0
+
+}
+#This Function Will Display Storage Utilization
+get_storage()
+{
+for line in $(cat $line); do
+echo " -----------------------------------------------------"
+echo -e "\e[39m""|""\e[94m"`ssh admin@"$line" hostname  ` "\e[39m"": "| tr -d '\n'
+echo `ssh admin@"$line"  df -H | grep '/dev/mapper/vg_ubuntu-lv_root' | awk '{print $5 " " $1}  '` "|"
+done < host
+echo " -----------------------------------------------------"
+
+exit 0
+}
+
+
+     read choice
+     case $choice in
+     1) normal_SAR;;
+     2) filter_SAR;;
+     3) get_storage;;
+     *) echo ""
+        echo -e "${RED} Wrong Input! Please Select From Given Option ${STD}"
+        echo ""
+        exit 0;;
+    esac
