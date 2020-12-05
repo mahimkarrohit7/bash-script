@@ -1,0 +1,21 @@
+#!/bin/bash
+echo  -e "\e[39m"" _______________________________________________________________________________________________________________________________________________________________ "
+echo -e "\e[39m""|\t\t""Memory Average""\t\t|\t\t""Memory PEAK""\t\t|\t\t""CPU Average""\t\t|\t\t""CPU PEAK""\t\t|"
+for line in $(cat $line); do
+echo " --------------------------------------------------------------------------------------------------------------------------------------------------------------- "
+echo `ssh admin@"$line" sar -r -s 09:00:00 -e 19:00:00 |awk '$1 == "Average:"{print $4}'` > /tmp/IP1
+echo -e "\e[39m""|\t""\e[94m"`ssh admin@"$line" hostname  ` "\e[39m"":"| tr -d '\n'
+echo -e "\e[92m" `cat /tmp/IP1` | tr -d '\n'
+echo `ssh admin@"$line" sar -r -s 09:00:00 -e 19:00:00 |awk '{print $5}'|awk 'NR == 1 {next} {print}'|awk 'NR == 2 {next} {print}'|awk 'NR == 3 {next} {print}'|awk 'NR>2 {print last} {last=$0}'` > /tmp/RAM
+echo  -e "\e[39m""\t|\t""\e[94m"`ssh admin@"$line" hostname  ` "\e[39m"":"|tr -d '\n'
+echo  -e "\e[92m" `awk -v RS='[[:space:]]+' 'BEGIN{max=-inf};{max = $0>max? $0: max};END{print max}' /tmp/RAM`'\n'  | tr -d '\n'
+echo `ssh admin@"$line" sar -u -s 09:00:00 -e 19:00:00 |awk '$1 == "Average:"{T=100-$8; if (T > 0) print T}'` > /tmp/IP2
+echo  -e "\e[39m""\t|\t""\e[94m" `ssh admin@"$line" hostname  ` "\e[39m"":"|tr -d '\n'
+echo -e "\e[92m" `cat /tmp/IP2`| tr -d '\n'
+echo `ssh admin@"$line" sar -u -s 09:00:00 -e 19:00:00 |awk '{print $4}'|awk 'NR == 1 {next} {print}'|awk 'NR == 2 {next} {print}'|awk 'NR == 3 {next} {print}'` > /tmp/CPU
+echo -e "\e[39m""\t|\t""\e[94m"`ssh admin@"$line" hostname  ` "\e[39m"":"|tr -d '\n'
+echo -e "\e[92m" `awk -v RS='[[:space:]]+' 'BEGIN{max=-inf};{max = $0>max? $0: max};END{print max}' /tmp/CPU`"\e[39m""\t|"| tr -d '\n'
+echo -e "\e[39m" "  "
+done < hosts
+echo " --------------------------------------------------------------------------------------------------------------------------------------------------------------- "
+exit 0
